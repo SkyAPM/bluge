@@ -22,9 +22,9 @@ import (
 )
 
 func TestSplitRange(t *testing.T) {
-	min := numeric.Float64ToInt64(1.0)
-	max := numeric.Float64ToInt64(5.0)
-	ranges := splitInt64Range(min, max, 4)
+	minBound := numeric.Float64ToInt64(1.0)
+	maxBound := numeric.Float64ToInt64(5.0)
+	ranges := splitInt64Range(minBound, maxBound, 4)
 	enumerated := ranges.Enumerate(nil)
 	if len(enumerated) != 135 {
 		t.Errorf("expected 135 terms, got %d", len(enumerated))

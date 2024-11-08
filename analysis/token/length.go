@@ -25,10 +25,10 @@ type LengthFilter struct {
 	max int
 }
 
-func NewLengthFilter(min, max int) *LengthFilter {
+func NewLengthFilter(minLen, maxLen int) *LengthFilter {
 	return &LengthFilter{
-		min: min,
-		max: max,
+		min: minLen,
+		max: maxLen,
 	}
 }
 

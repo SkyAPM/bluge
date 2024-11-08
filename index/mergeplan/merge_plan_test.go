@@ -469,10 +469,10 @@ func TestPlanMaxSegmentSizeLimit(t *testing.T) {
 	s := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(s)
 
-	max := 20
-	min := 5
+	maxVal := 20
+	minVal := 5
 	randomInRange := func() int64 {
-		return int64(r.Intn(max-min) + min)
+		return int64(r.Intn(maxVal-minVal) + minVal)
 	}
 	for i := 1; i < 20; i++ {
 		o.MaxSegmentSize = randomInRange()

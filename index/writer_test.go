@@ -15,7 +15,6 @@
 package index
 
 import (
-	"io/ioutil"
 	"math"
 	"os"
 	"reflect"
@@ -28,7 +27,7 @@ import (
 )
 
 func CreateConfig(name string) (config Config, cleanup func() error) {
-	path, err := ioutil.TempDir("", "bluge-index-test"+name)
+	path, err := os.MkdirTemp("", "bluge-index-test"+name)
 	if err != nil {
 		panic(err)
 	}

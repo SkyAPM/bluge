@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"math/rand"
 	"os"
@@ -39,7 +38,7 @@ type Fatalfable interface {
 }
 
 func createTmpIndexPath(f Fatalfable) string {
-	tmpIndexPath, err := ioutil.TempDir("", "bluge-testidx")
+	tmpIndexPath, err := os.MkdirTemp("", "bluge-testidx")
 	if err != nil {
 		f.Fatalf("error creating temp dir: %v", err)
 	}

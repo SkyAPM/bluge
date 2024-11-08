@@ -348,7 +348,7 @@ func (s *Writer) Reader() (*Snapshot, error) {
 func (s *Writer) MemoryUsed() (memUsed uint64) {
 	indexSnapshot := s.currentSnapshot()
 	if indexSnapshot == nil {
-		return
+		return 0
 	}
 
 	defer func() {

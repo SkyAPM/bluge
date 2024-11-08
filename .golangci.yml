@@ -9,17 +9,17 @@ linters-settings:
     min-occurrences: 2
   gocritic:
     enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
+    - diagnostic
+    - experimental
+    - opinionated
+    - performance
+    - style
     disabled-checks:
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - ifElseChain
-      - octalLiteral
-      - whyNoLint
-      - wrapperFunc
+    - dupImport # https://github.com/go-critic/go-critic/issues/845
+    - ifElseChain
+    - octalLiteral
+    - whyNoLint
+    - wrapperFunc
   gocyclo:
     min-complexity: 20 # increased from 15 to get us going, but not make things worse
   lll:
@@ -27,51 +27,51 @@ linters-settings:
   misspell:
     locale: US
   nolintlint:
-    allow-leading-space: true # don't require machine-readable nolint directives (i.e. with no leading space)
     allow-unused: false # report any unused nolint directives
     require-explanation: false # don't require an explanation for nolint directives
     require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+  gosec:
+    excludes:
+    - G115 # integer overflow conversion
+  revive:
+    rules:
+    - name: unused-parameter
+      disabled: true
 
 linters:
   # please, do not use `enable-all`: it's deprecated and will be removed soon.
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
   disable-all: true
   enable:
-    - bodyclose
-    - deadcode
-    - depguard
-    - dogsled
-    - dupl
-    - errcheck
-    - funlen
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    - revive
-    - goprintffuncname
-    - gosec
-    - gosimple
-    - govet
-    - ineffassign
-    - lll
-    - misspell
-    - nakedret
-    - nolintlint
-    - rowserrcheck
-    - exportloopref
-    - staticcheck
-    - structcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - varcheck
-    - whitespace
-
+  - bodyclose
+  - dogsled
+  - dupl
+  - errcheck
+  - funlen
+  - gochecknoinits
+  - goconst
+  - gocritic
+  - gocyclo
+  - gofmt
+  - goimports
+  - revive
+  - goprintffuncname
+  - gosec
+  - gosimple
+  - govet
+  - ineffassign
+  - lll
+  - misspell
+  - nakedret
+  - nolintlint
+  - rowserrcheck
+  - staticcheck
+  - stylecheck
+  - typecheck
+  - unconvert
+  - unparam
+  - unused
+  - whitespace
   # don't enable:
   # - asciicheck
   # - gochecknoglobals
@@ -88,118 +88,119 @@ linters:
 issues:
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
-    - path: _test\.go
-      linters:
-        - lll
-        - funlen
-        - goconst
-        - gocyclo
-        - dupl
-        - gochecknoinits
-    - path: cmd/bluge/cmd
-      linters:
-        - gochecknoinits
-    - path: sizes.go
-      linters:
-        - gochecknoinits
+  - path: _test\.go
+    linters:
+    - lll
+    - funlen
+    - goconst
+    - gocyclo
+    - dupl
+    - gochecknoinits
+  - path: cmd/bluge/cmd
+    linters:
+    - gochecknoinits
+  - path: sizes.go
+    linters:
+    - gochecknoinits
 
-    # we don't need secure random in test
-    - path: _test\.go
-      linters:
-        - gosec
-      text: G404
+  # we don't need secure random in test
+  - path: _test\.go
+    linters:
+    - gosec
+    text: G404
 
-    # allow lock test to invoke itself
-    - path: index/lock/lock_test.go
-      linters:
-        - gosec
-      text: G204
+  # allow lock test to invoke itself
+  - path: index/lock/lock_test.go
+    linters:
+    - gosec
+    text: G204
 
-    # cannot safely refactor until optimization tests are in place again
-    - path: index/optimize.go
-      linters:
-        - funlen
+  # cannot safely refactor until optimization tests are in place again
+  - path: index/optimize.go
+    linters:
+    - funlen
 
-   # FIXME refactor persister
-    - path: index/persister.go
-      linters:
-        - funlen
-      text: persisterLoop
+  # FIXME refactor persister
+  - path: index/persister.go
+    linters:
+    - funlen
+    text: persisterLoop
 
-    # many analysis tests have non-english words
-    # lots of false alarms on duplicate code
-    - path: ^analysis/.*_test\.go$
-      linters:
-        - misspell
-        - dupl
+  # many analysis tests have non-english words
+  # lots of false alarms on duplicate code
+  - path: ^analysis/.*_test\.go$
+    linters:
+    - misspell
+    - dupl
 
-    # used in some analyzers
-    - path: analysis/lang/
-      linters:
-        - stylecheck
-      text: ST1018
+  # used in some analyzers
+  - path: analysis/lang/
+    linters:
+    - stylecheck
+    text: ST1018
 
-    # many language specific analyzers have
-    # non-english words or non-word substrings
-    # lots of false alrams on duplicate code
-    - path: ^analysis/lang/.*\.go$
-      linters:
-        - misspell
-        - dupl
-        - gocyclo
-        - funlen
+  # many language specific analyzers have
+  # non-english words or non-word substrings
+  # lots of false alrams on duplicate code
+  - path: ^analysis/lang/.*\.go$
+    linters:
+    - misspell
+    - dupl
+    - gocyclo
+    - funlen
 
-    # allow init here
-    - path: analysis/lang/in/scripts.go
-      linters:
-        - gochecknoinits
+  # allow init here
+  - path: analysis/lang/in/scripts.go
+    linters:
+    - gochecknoinits
 
-    # and allow init here
-    - path: analysis/freq.go
-      linters:
-        - gochecknoinits
+  # and allow init here
+  - path: analysis/freq.go
+    linters:
+    - gochecknoinits
 
-    - path: search/searcher/search_fuzzy.go
-      linters:
-        - gochecknoinits
+  - path: search/searcher/search_fuzzy.go
+    linters:
+    - gochecknoinits
 
-    # has long regexp
-    - path: analysis/tokenizer/web.go
-      linters:
-        - lll
+  # has long regexp
+  - path: analysis/tokenizer/web.go
+    linters:
+    - lll
 
-    # needs rewrite to avoid fallthrough
-    # skipping funlen,gocyclo since ported
-    - path: analysis/char/asciifolding.go
-      linters:
-        - gocritic
-        - funlen
-        - gocyclo
+  # needs rewrite to avoid fallthrough
+  # skipping funlen,gocyclo since ported
+  - path: analysis/char/asciifolding.go
+    linters:
+    - gocritic
+    - funlen
+    - gocyclo
 
-    # many hard-coded values
-    - path: numeric/geo/sloppy.go
-      linters:
-        - gochecknoinits
+  # many hard-coded values
+  - path: numeric/geo/sloppy.go
+    linters:
+    - gochecknoinits
 
-    # allow init methods for our size calculations
-    - path: size.go
-      linters:
-        - gochecknoinits
+  # allow init methods for our size calculations
+  - path: size.go
+    linters:
+    - gochecknoinits
 
-    # https://github.com/go-critic/go-critic/issues/926
-    - linters:
-        - gocritic
-      text: "unnecessaryDefer:"
+  # https://github.com/go-critic/go-critic/issues/926
+  - linters:
+    - gocritic
+    text: "unnecessaryDefer:"
 
-    # until we make final decision on config
-    - linters:
-        - gocritic
-      text: "config is heavy"
+  # until we make final decision on config
+  - linters:
+    - gocritic
+    text: "config is heavy"
+
+  exclude-dirs:
+  - test/testdata_etc
+  - internal/cache
+  - internal/renameio
+  - internal/robustio
 
 run:
-  skip-dirs:
-    - test/testdata_etc
-    - internal/cache
-    - internal/renameio
-    - internal/robustio
   timeout: 5m

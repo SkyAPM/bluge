@@ -105,9 +105,9 @@ func (config Config) WithNormCalc(calc func(field string, numTerms int) float32)
 	return config
 }
 
-func (config Config) WithTimeRange(min, max int64) Config {
-	config.FilterTimeMin = min
-	config.FilterTimeMax = max
+func (config Config) WithTimeRange(timeMin, timeMax int64) Config {
+	config.FilterTimeMin = timeMin
+	config.FilterTimeMax = timeMax
 	return config
 }
 

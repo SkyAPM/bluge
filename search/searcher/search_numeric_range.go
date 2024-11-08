@@ -25,20 +25,20 @@ import (
 )
 
 func NewNumericRangeSearcher(indexReader search.Reader,
-	min, max float64, inclusiveMin, inclusiveMax bool, field string,
+	minVal, maxVal float64, inclusiveMin, inclusiveMax bool, field string,
 	boost float64, scorer search.Scorer, compScorer search.CompositeScorer,
 	options search.SearcherOptions) (search.Searcher, error) {
 	var minInt64 int64
-	if math.IsInf(min, -1) {
+	if math.IsInf(minVal, -1) {
 		minInt64 = math.MinInt64
 	} else {
-		minInt64 = numeric.Float64ToInt64(min)
+		minInt64 = numeric.Float64ToInt64(minVal)
 	}
 	var maxInt64 int64
-	if math.IsInf(max, 1) {
+	if math.IsInf(maxVal, 1) {
 		maxInt64 = math.MaxInt64
 	} else {
-		maxInt64 = numeric.Float64ToInt64(max)
+		maxInt64 = numeric.Float64ToInt64(maxVal)
 	}
 
 	// find all the ranges

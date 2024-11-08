@@ -34,7 +34,7 @@ type DisjunctionSliceSearcher struct {
 	options      search.SearcherOptions
 }
 
-func newDisjunctionSliceSearcher(qsearchers []search.Searcher, min int, scorer search.CompositeScorer, options search.SearcherOptions,
+func newDisjunctionSliceSearcher(qsearchers []search.Searcher, minMatch int, scorer search.CompositeScorer, options search.SearcherOptions,
 	limit bool) (
 	*DisjunctionSliceSearcher, error) {
 	if limit && tooManyClauses(len(qsearchers)) {
@@ -51,7 +51,7 @@ func newDisjunctionSliceSearcher(qsearchers []search.Searcher, min int, scorer s
 		numSearchers: len(searchers),
 		currs:        make([]*search.DocumentMatch, len(searchers)),
 		scorer:       scorer,
-		min:          min,
+		min:          minMatch,
 		matching:     make([]*search.DocumentMatch, len(searchers)),
 		matchingIdxs: make([]int, len(searchers)),
 		options:      options,

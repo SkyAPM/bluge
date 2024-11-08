@@ -19,18 +19,18 @@ import (
 )
 
 func NewTermRangeSearcher(indexReader search.Reader,
-	min, max []byte, inclusiveMin, inclusiveMax bool, field string,
+	minVal, maxVal []byte, inclusiveMin, inclusiveMax bool, field string,
 	boost float64, scorer search.Scorer, compScorer search.CompositeScorer,
 	options search.SearcherOptions) (search.Searcher, error) {
-	if min == nil {
-		min = []byte{}
+	if minVal == nil {
+		minVal = []byte{}
 	}
 
-	if max != nil && inclusiveMax {
-		max = append(max, 0)
+	if maxVal != nil && inclusiveMax {
+		maxVal = append(maxVal, 0)
 	}
 
-	fieldDict, err := indexReader.DictionaryIterator(field, nil, min, max)
+	fieldDict, err := indexReader.DictionaryIterator(field, nil, minVal, maxVal)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func NewTermRangeSearcher(indexReader search.Reader,
 		return NewMatchNoneSearcher(indexReader, options)
 	}
 
-	if !inclusiveMin && min != nil && string(min) == terms[0] {
+	if !inclusiveMin && minVal != nil && string(minVal) == terms[0] {
 		terms = terms[1:]
 		// check again, as we might have removed only entry
 		if len(terms) < 1 {
