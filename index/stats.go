@@ -15,6 +15,7 @@
 package index
 
 import (
+	"reflect"
 	"sync/atomic"
 )
 
@@ -26,10 +27,10 @@ func (s *Writer) Stats() Stats {
 	// add some computed values
 	numFilesOnDisk, numBytesUsedDisk := s.directory.Stats()
 
-	s.stats.CurOnDiskBytes = numBytesUsedDisk
-	s.stats.CurOnDiskFiles = numFilesOnDisk
-
-	return s.stats
+	// Update the stats atomically
+	atomic.StoreUint64(&s.stats.CurOnDiskBytes, numBytesUsedDisk)
+	atomic.StoreUint64(&s.stats.CurOnDiskFiles, numFilesOnDisk)
+	return s.stats.Clone()
 }
 
 // Stats tracks statistics about the index, fields that are
@@ -151,6 +152,41 @@ type Stats struct {
 	newSegBufBytesRemoved uint64
 	analysisBytesAdded    uint64
 	analysisBytesRemoved  uint64
+}
+
+func (s *Stats) ToMap() map[string]interface{} {
+	m := map[string]interface{}{}
+	sve := reflect.ValueOf(s).Elem()
+	svet := sve.Type()
+	for i := 0; i < svet.NumField(); i++ {
+		svef := sve.Field(i)
+		structField := svet.Field(i)
+		if svef.CanAddr() && structField.IsExported() {
+			svefp := svef.Addr().Interface()
+			m[svet.Field(i).Name] = atomic.LoadUint64(svefp.(*uint64))
+		}
+	}
+	return m
+}
+
+func (s *Stats) FromMap(m map[string]interface{}) {
+	sve := reflect.ValueOf(s).Elem()
+	svet := sve.Type()
+	for i := 0; i < svet.NumField(); i++ {
+		svef := sve.Field(i)
+		structField := svet.Field(i)
+		if svef.CanAddr() && structField.IsExported() {
+			svefp := svef.Addr().Interface()
+			if v, ok := m[svet.Field(i).Name]; ok {
+				atomic.StoreUint64(svefp.(*uint64), v.(uint64))
+			}
+		}
+	}
+}
+
+func (s *Stats) Clone() (n Stats) {
+	n.FromMap(s.ToMap())
+	return n
 }
 
 func (s *Writer) numEventsBlocking() int {
