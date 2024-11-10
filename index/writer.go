@@ -224,6 +224,15 @@ func (s *Writer) close() (err error) {
 
 // Batch applies a batch of changes to the index atomically
 func (s *Writer) Batch(batch *Batch) (err error) {
+	if len(batch.unparsedIDs) > 0 {
+		if err := s.removeExistingDocuments(batch); err != nil {
+			return err
+		}
+		if len(batch.documents) == 0 {
+			return nil
+		}
+	}
+
 	start := time.Now()
 
 	defer func() {
@@ -287,6 +296,34 @@ func (s *Writer) Batch(batch *Batch) (err error) {
 	return err
 }
 
+func (s *Writer) removeExistingDocuments(batch *Batch) error {
+	root := s.currentSnapshot()
+	defer func() { _ = root.Close() }()
+
+	for _, seg := range root.segment {
+		dict, err := seg.segment.Dictionary(batch.unparsedIDs[0].Field())
+		if err != nil {
+			return err
+		}
+
+		for i := 0; i < len(batch.unparsedIDs); i++ {
+			if ok, _ := dict.Contains(batch.unparsedIDs[i].Term()); ok {
+				batch.unparsedDocuments = append(batch.unparsedDocuments[:i], batch.unparsedDocuments[i+1:]...)
+				batch.unparsedIDs = append(batch.unparsedIDs[:i], batch.unparsedIDs[i+1:]...)
+				i--
+				if len(batch.unparsedDocuments) == 0 {
+					return nil
+				}
+			}
+		}
+	}
+	if len(batch.unparsedDocuments) > 0 {
+		batch.documents = append(batch.documents, batch.unparsedDocuments...)
+		batch.ids = append(batch.ids, batch.unparsedIDs...)
+	}
+	return nil
+}
+
 func (s *Writer) prepareSegment(newSegment *segmentWrapper, idTerms []segment.Term,
 	internalOps map[string][]byte, persistedCallback func(error)) error {
 	// new introduction
@@ -304,16 +341,18 @@ func (s *Writer) prepareSegment(newSegment *segmentWrapper, idTerms []segment.Te
 		introduction.persisted = make(chan error, 1)
 	}
 
-	// optimistically prepare obsoletes outside of rootLock
-	root := s.currentSnapshot()
-	defer func() { _ = root.Close() }()
+	if len(idTerms) > 0 {
+		// optimistically prepare obsoletes outside of rootLock
+		root := s.currentSnapshot()
+		defer func() { _ = root.Close() }()
 
-	for _, seg := range root.segment {
-		delta, err := seg.segment.DocsMatchingTerms(idTerms)
-		if err != nil {
-			return err
+		for _, seg := range root.segment {
+			delta, err := seg.segment.DocsMatchingTerms(idTerms)
+			if err != nil {
+				return err
+			}
+			introduction.obsoletes[seg.id] = delta
 		}
-		introduction.obsoletes[seg.id] = delta
 	}
 
 	introStartTime := time.Now()

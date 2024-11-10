@@ -19,6 +19,8 @@ import segment "github.com/blugelabs/bluge_segment_api"
 type Batch struct {
 	documents         []segment.Document
 	ids               []segment.Term
+	unparsedDocuments []segment.Document
+	unparsedIDs       []segment.Term
 	persistedCallback func(error)
 }
 
@@ -28,6 +30,11 @@ func NewBatch() *Batch {
 
 func (b *Batch) Insert(doc segment.Document) {
 	b.documents = append(b.documents, doc)
+}
+
+func (b *Batch) InsertIfAbsent(id segment.Term, doc segment.Document) {
+	b.unparsedDocuments = append(b.unparsedDocuments, doc)
+	b.unparsedIDs = append(b.unparsedIDs, id)
 }
 
 func (b *Batch) Update(id segment.Term, doc segment.Document) {
@@ -43,6 +50,8 @@ func (b *Batch) Reset() {
 	b.documents = b.documents[:0]
 	b.ids = b.ids[:0]
 	b.persistedCallback = nil
+	b.unparsedDocuments = b.unparsedDocuments[:0]
+	b.unparsedIDs = b.unparsedIDs[:0]
 }
 
 func (b *Batch) SetPersistedCallback(f func(error)) {

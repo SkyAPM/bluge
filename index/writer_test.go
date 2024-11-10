@@ -1631,3 +1631,139 @@ func TestIndexSeekBackwardsStats(t *testing.T) {
 			idx.stats.TotTermSearchersFinished)
 	}
 }
+
+func TestBatch_InsertIfAbsent(t *testing.T) {
+	cfg, cleanup := CreateConfig("TestBatch_InsertIfAbsent")
+	defer func() {
+		err := cleanup()
+		if err != nil {
+			t.Log(err)
+		}
+	}()
+
+	idx, err := OpenWriter(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err := idx.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	var expectedCount uint64
+
+	// Verify initial document count is zero
+	reader, err := idx.Reader()
+	if err != nil {
+		t.Fatal(err)
+	}
+	docCount, err := reader.Count()
+	if err != nil {
+		t.Error(err)
+	}
+	if docCount != expectedCount {
+		t.Errorf("Expected document count to be %d got %d", expectedCount, docCount)
+	}
+	err = reader.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Insert a document using InsertIfAbsent
+	docID := "doc-1"
+	doc := &FakeDocument{
+		NewFakeField("_id", docID, true, false, false),
+		NewFakeField("title", "mister", false, false, true),
+	}
+	batch := NewBatch()
+	batch.InsertIfAbsent(testIdentifier(docID), doc)
+
+	// Apply the batch
+	if err := idx.Batch(batch); err != nil {
+		t.Fatalf("failed to apply batch: %v", err)
+	}
+	expectedCount++
+
+	// Verify document count after insertion
+	reader, err = idx.Reader()
+	if err != nil {
+		t.Fatal(err)
+	}
+	docCount, err = reader.Count()
+	if err != nil {
+		t.Error(err)
+	}
+	if docCount != expectedCount {
+		t.Errorf("Expected document count to be %d got %d", expectedCount, docCount)
+	}
+	err = reader.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Attempt to InsertIfAbsent with the same ID
+	docDuplicate := &FakeDocument{
+		NewFakeField("_id", docID, true, false, false),
+		NewFakeField("title", "mister2", true, false, true),
+	}
+	batchDuplicate := NewBatch()
+	batchDuplicate.InsertIfAbsent(testIdentifier(docID), docDuplicate)
+
+	// Apply the duplicate batch
+	if err := idx.Batch(batchDuplicate); err != nil {
+		t.Fatalf("failed to apply duplicate batch: %v", err)
+	}
+
+	// Since it's InsertIfAbsent, the document should not be duplicated
+	// Verify document count remains the same
+	reader, err = idx.Reader()
+	if err != nil {
+		t.Fatal(err)
+	}
+	docCount, err = reader.Count()
+	if err != nil {
+		t.Error(err)
+	}
+	if docCount != expectedCount {
+		t.Errorf("Expected document count to be %d after duplicate insert, got %d", expectedCount, docCount)
+	}
+
+	docNum1, err := findNumberByID(reader, docID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dvr, err := reader.DocumentValueReader([]string{"title"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = dvr.VisitDocumentValues(docNum1, func(field string, term []byte) {
+		if field == "title" {
+			if string(term) != "mister" {
+				t.Errorf("expected title to be 'First Document', got '%s'", string(term))
+			}
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = reader.VisitStoredFields(docNum1, func(field string, value []byte) bool {
+		if field == "title" {
+			if string(value) != "mister" {
+				t.Errorf("expected title to be 'mister', got '%s'", string(value))
+			}
+		}
+		return true
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = reader.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
