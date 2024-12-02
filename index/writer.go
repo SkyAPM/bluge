@@ -307,13 +307,21 @@ func (s *Writer) removeExistingDocuments(batch *Batch) error {
 		}
 
 		for i := 0; i < len(batch.unparsedIDs); i++ {
-			if ok, _ := dict.Contains(batch.unparsedIDs[i].Term()); ok {
-				batch.unparsedDocuments = append(batch.unparsedDocuments[:i], batch.unparsedDocuments[i+1:]...)
-				batch.unparsedIDs = append(batch.unparsedIDs[:i], batch.unparsedIDs[i+1:]...)
-				i--
-				if len(batch.unparsedDocuments) == 0 {
-					return nil
+			if ok, _ := dict.Contains(batch.unparsedIDs[i].Term()); !ok {
+				continue
+			}
+			fn := batch.fieldNames[i]
+			if len(fn) > 0 {
+				if anyItemNotExist(fn, seg.segment.Fields()) {
+					continue
 				}
+			}
+			batch.unparsedDocuments = append(batch.unparsedDocuments[:i], batch.unparsedDocuments[i+1:]...)
+			batch.unparsedIDs = append(batch.unparsedIDs[:i], batch.unparsedIDs[i+1:]...)
+			batch.fieldNames = append(batch.fieldNames[:i], batch.fieldNames[i+1:]...)
+			i--
+			if len(batch.unparsedDocuments) == 0 {
+				return nil
 			}
 		}
 	}
@@ -322,6 +330,22 @@ func (s *Writer) removeExistingDocuments(batch *Batch) error {
 		batch.ids = append(batch.ids, batch.unparsedIDs...)
 	}
 	return nil
+}
+
+func anyItemNotExist(newFields, existedFields []string) bool {
+	for _, item := range newFields {
+		found := false
+		for _, field := range existedFields {
+			if item == field {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Writer) prepareSegment(newSegment *segmentWrapper, idTerms []segment.Term,

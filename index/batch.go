@@ -21,6 +21,7 @@ type Batch struct {
 	ids               []segment.Term
 	unparsedDocuments []segment.Document
 	unparsedIDs       []segment.Term
+	fieldNames        [][]string
 	persistedCallback func(error)
 }
 
@@ -32,9 +33,10 @@ func (b *Batch) Insert(doc segment.Document) {
 	b.documents = append(b.documents, doc)
 }
 
-func (b *Batch) InsertIfAbsent(id segment.Term, doc segment.Document) {
+func (b *Batch) InsertIfAbsent(id segment.Term, fieldNames []string, doc segment.Document) {
 	b.unparsedDocuments = append(b.unparsedDocuments, doc)
 	b.unparsedIDs = append(b.unparsedIDs, id)
+	b.fieldNames = append(b.fieldNames, fieldNames)
 }
 
 func (b *Batch) Update(id segment.Term, doc segment.Document) {
