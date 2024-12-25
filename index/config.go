@@ -78,6 +78,8 @@ type Config struct {
 	ValidateSnapshotCRC bool
 
 	virtualFields map[string][]segment.Field
+
+	CacheMaxBytes int
 }
 
 func (config Config) WithSegmentType(typ string) Config {

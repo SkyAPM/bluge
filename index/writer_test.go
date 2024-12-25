@@ -1633,242 +1633,270 @@ func TestIndexSeekBackwardsStats(t *testing.T) {
 }
 
 func TestBatch_InsertIfAbsent(t *testing.T) {
-	cfg, cleanup := CreateConfig("TestBatch_InsertIfAbsent")
-	defer func() {
-		err := cleanup()
-		if err != nil {
-			t.Log(err)
-		}
-	}()
-
-	idx, err := OpenWriter(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		err := idx.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	var expectedCount uint64
-
-	// Verify initial document count is zero
-	reader, err := idx.Reader()
-	if err != nil {
-		t.Fatal(err)
-	}
-	docCount, err := reader.Count()
-	if err != nil {
-		t.Error(err)
-	}
-	if docCount != expectedCount {
-		t.Errorf("Expected document count to be %d got %d", expectedCount, docCount)
-	}
-	err = reader.Close()
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name          string
+		cacheMaxBytes int
+	}{
+		{"WithoutCache", 0},
+		{"WithCache", 1024 * 1024}, // 1MB cache
 	}
 
-	// Insert a document using InsertIfAbsent
-	docID := "doc-1"
-	doc := &FakeDocument{
-		NewFakeField("_id", docID, true, false, false),
-		NewFakeField("title", "mister", false, false, true),
-	}
-	batch := NewBatch()
-	batch.InsertIfAbsent(testIdentifier(docID), []string{"title"}, doc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, cleanup := CreateConfig("TestBatch_InsertIfAbsent")
+			defer func() {
+				err := cleanup()
+				if err != nil {
+					t.Log(err)
+				}
+			}()
 
-	// Apply the batch
-	if err := idx.Batch(batch); err != nil {
-		t.Fatalf("failed to apply batch: %v", err)
-	}
-	expectedCount++
+			cfg.CacheMaxBytes = tt.cacheMaxBytes
 
-	// Verify document count after insertion
-	reader, err = idx.Reader()
-	if err != nil {
-		t.Fatal(err)
-	}
-	docCount, err = reader.Count()
-	if err != nil {
-		t.Error(err)
-	}
-	if docCount != expectedCount {
-		t.Errorf("Expected document count to be %d got %d", expectedCount, docCount)
-	}
-	err = reader.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Attempt to InsertIfAbsent with the same ID
-	docDuplicate := &FakeDocument{
-		NewFakeField("_id", docID, true, false, false),
-		NewFakeField("title", "mister2", true, false, true),
-	}
-	batchDuplicate := NewBatch()
-	batchDuplicate.InsertIfAbsent(testIdentifier(docID), []string{"title"}, docDuplicate)
-
-	// Apply the duplicate batch
-	if err := idx.Batch(batchDuplicate); err != nil {
-		t.Fatalf("failed to apply duplicate batch: %v", err)
-	}
-
-	// Since it's InsertIfAbsent, the document should not be duplicated
-	// Verify document count remains the same
-	reader, err = idx.Reader()
-	if err != nil {
-		t.Fatal(err)
-	}
-	docCount, err = reader.Count()
-	if err != nil {
-		t.Error(err)
-	}
-	if docCount != expectedCount {
-		t.Errorf("Expected document count to be %d after duplicate insert, got %d", expectedCount, docCount)
-	}
-
-	docNum1, err := findNumberByID(reader, docID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	dvr, err := reader.DocumentValueReader([]string{"title"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = dvr.VisitDocumentValues(docNum1, func(field string, term []byte) {
-		if field == "title" {
-			if string(term) != "mister" {
-				t.Errorf("expected title to be 'First Document', got '%s'", string(term))
+			idx, err := OpenWriter(cfg)
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+			defer func() {
+				err := idx.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}()
 
-	err = reader.VisitStoredFields(docNum1, func(field string, value []byte) bool {
-		if field == "title" {
-			if string(value) != "mister" {
-				t.Errorf("expected title to be 'mister', got '%s'", string(value))
+			var expectedCount uint64
+
+			// Verify initial document count is zero
+			reader, err := idx.Reader()
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
-		return true
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+			docCount, err := reader.Count()
+			if err != nil {
+				t.Error(err)
+			}
+			if docCount != expectedCount {
+				t.Errorf("Expected document count to be %d got %d", expectedCount, docCount)
+			}
+			err = reader.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	err = reader.Close()
-	if err != nil {
-		t.Fatal(err)
+			// Insert a document using InsertIfAbsent
+			docID := "doc-1"
+			doc := &FakeDocument{
+				NewFakeField("_id", docID, true, false, false),
+				NewFakeField("title", "mister", false, false, true),
+			}
+			batch := NewBatch()
+			batch.InsertIfAbsent(testIdentifier(docID), []string{"title"}, doc)
+
+			// Apply the batch
+			if err := idx.Batch(batch); err != nil {
+				t.Fatalf("failed to apply batch: %v", err)
+			}
+			expectedCount++
+
+			// Verify document count after insertion
+			reader, err = idx.Reader()
+			if err != nil {
+				t.Fatal(err)
+			}
+			docCount, err = reader.Count()
+			if err != nil {
+				t.Error(err)
+			}
+			if docCount != expectedCount {
+				t.Errorf("Expected document count to be %d got %d", expectedCount, docCount)
+			}
+			err = reader.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Attempt to InsertIfAbsent with the same ID
+			docDuplicate := &FakeDocument{
+				NewFakeField("_id", docID, true, false, false),
+				NewFakeField("title", "mister2", true, false, true),
+			}
+			batchDuplicate := NewBatch()
+			batchDuplicate.InsertIfAbsent(testIdentifier(docID), []string{"title"}, docDuplicate)
+
+			// Apply the duplicate batch
+			if err := idx.Batch(batchDuplicate); err != nil {
+				t.Fatalf("failed to apply duplicate batch: %v", err)
+			}
+
+			// Since it's InsertIfAbsent, the document should not be duplicated
+			// Verify document count remains the same
+			reader, err = idx.Reader()
+			if err != nil {
+				t.Fatal(err)
+			}
+			docCount, err = reader.Count()
+			if err != nil {
+				t.Error(err)
+			}
+			if docCount != expectedCount {
+				t.Errorf("Expected document count to be %d after duplicate insert, got %d", expectedCount, docCount)
+			}
+
+			docNum1, err := findNumberByID(reader, docID)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			dvr, err := reader.DocumentValueReader([]string{"title"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = dvr.VisitDocumentValues(docNum1, func(field string, term []byte) {
+				if field == "title" {
+					if string(term) != "mister" {
+						t.Errorf("expected title to be 'mister', got '%s'", string(term))
+					}
+				}
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = reader.VisitStoredFields(docNum1, func(field string, value []byte) bool {
+				if field == "title" {
+					if string(value) != "mister" {
+						t.Errorf("expected title to be 'mister', got '%s'", string(value))
+					}
+				}
+				return true
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = reader.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 
 func TestBatch_InsertAndUpdateContent(t *testing.T) {
-	cfg, cleanup := CreateConfig("TestBatch_InsertAndUpdateContent")
-	defer func() {
-		err := cleanup()
-		if err != nil {
-			t.Log(err)
-		}
-	}()
-
-	idx, err := OpenWriter(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		err := idx.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	var expectedCount uint64
-
-	// Insert a document
-	docID := "doc-1"
-	doc := &FakeDocument{
-		NewFakeField("_id", docID, true, false, false),
-		NewFakeField("title", "mister", false, false, true),
-	}
-	batch := NewBatch()
-	batch.InsertIfAbsent(testIdentifier(docID), []string{"title"}, doc)
-
-	// Apply the batch
-	if err := idx.Batch(batch); err != nil {
-		t.Fatalf("failed to apply batch: %v", err)
-	}
-	expectedCount++
-
-	// Verify document count after insertion
-	reader, err := idx.Reader()
-	if err != nil {
-		t.Fatal(err)
-	}
-	docCount, err := reader.Count()
-	if err != nil {
-		t.Error(err)
-	}
-	if docCount != expectedCount {
-		t.Errorf("Expected document count to be %d got %d", expectedCount, docCount)
-	}
-	err = reader.Close()
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name          string
+		cacheMaxBytes int
+	}{
+		{"WithoutCache", 0},
+		{"WithCache", 1024 * 1024}, // 1MB cache
 	}
 
-	// Update the document with new content
-	docUpdated := &FakeDocument{
-		NewFakeField("_id", docID, true, false, false),
-		NewFakeField("title", "mister", false, false, true),
-		NewFakeField("content", "updated content", false, false, true),
-	}
-	batchUpdate := NewBatch()
-	batchUpdate.InsertIfAbsent(testIdentifier(docID), []string{"title", "content"}, docUpdated)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, cleanup := CreateConfig("TestBatch_InsertAndUpdateContent")
+			defer func() {
+				err := cleanup()
+				if err != nil {
+					t.Log(err)
+				}
+			}()
 
-	// Apply the update batch
-	if err := idx.Batch(batchUpdate); err != nil {
-		t.Fatalf("failed to apply update batch: %v", err)
-	}
+			cfg.CacheMaxBytes = tt.cacheMaxBytes
 
-	// Verify document count remains the same
-	reader, err = idx.Reader()
-	if err != nil {
-		t.Fatal(err)
-	}
-	docCount, err = reader.Count()
-	if err != nil {
-		t.Error(err)
-	}
-	if docCount != expectedCount {
-		t.Errorf("Expected document count to be %d after update, got %d", expectedCount, docCount)
-	}
-
-	docNum1, err := findNumberByID(reader, docID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Verify the updated content
-	err = reader.VisitStoredFields(docNum1, func(field string, value []byte) bool {
-		if field == "content" {
-			if string(value) != "updated content" {
-				t.Errorf("expected content to be 'updated content', got '%s'", string(value))
+			idx, err := OpenWriter(cfg)
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
-		return true
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+			defer func() {
+				err := idx.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}()
 
-	err = reader.Close()
-	if err != nil {
-		t.Fatal(err)
+			var expectedCount uint64
+
+			// Insert a document
+			docID := "doc-1"
+			doc := &FakeDocument{
+				NewFakeField("_id", docID, true, false, false),
+				NewFakeField("title", "mister", false, false, true),
+			}
+			batch := NewBatch()
+			batch.InsertIfAbsent(testIdentifier(docID), []string{"title"}, doc)
+
+			// Apply the batch
+			if err := idx.Batch(batch); err != nil {
+				t.Fatalf("failed to apply batch: %v", err)
+			}
+			expectedCount++
+
+			// Verify document count after insertion
+			reader, err := idx.Reader()
+			if err != nil {
+				t.Fatal(err)
+			}
+			docCount, err := reader.Count()
+			if err != nil {
+				t.Error(err)
+			}
+			if docCount != expectedCount {
+				t.Errorf("Expected document count to be %d got %d", expectedCount, docCount)
+			}
+			err = reader.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Update the document with new content
+			docUpdated := &FakeDocument{
+				NewFakeField("_id", docID, true, false, false),
+				NewFakeField("title", "mister", false, false, true),
+				NewFakeField("content", "updated content", false, false, true),
+			}
+			batchUpdate := NewBatch()
+			batchUpdate.InsertIfAbsent(testIdentifier(docID), []string{"title", "content"}, docUpdated)
+
+			// Apply the update batch
+			if err := idx.Batch(batchUpdate); err != nil {
+				t.Fatalf("failed to apply update batch: %v", err)
+			}
+
+			// Verify document count remains the same
+			reader, err = idx.Reader()
+			if err != nil {
+				t.Fatal(err)
+			}
+			docCount, err = reader.Count()
+			if err != nil {
+				t.Error(err)
+			}
+			if docCount != expectedCount {
+				t.Errorf("Expected document count to be %d after update, got %d", expectedCount, docCount)
+			}
+
+			docNum1, err := findNumberByID(reader, docID)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Verify the updated content
+			err = reader.VisitStoredFields(docNum1, func(field string, value []byte) bool {
+				if field == "content" {
+					if string(value) != "updated content" {
+						t.Errorf("expected content to be 'updated content', got '%s'", string(value))
+					}
+				}
+				return true
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = reader.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }

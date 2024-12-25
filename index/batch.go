@@ -54,6 +54,12 @@ func (b *Batch) Reset() {
 	b.persistedCallback = nil
 	b.unparsedDocuments = b.unparsedDocuments[:0]
 	b.unparsedIDs = b.unparsedIDs[:0]
+	b.fieldNames = b.fieldNames[:0]
+}
+
+func (b *Batch) ResetDoc() {
+	b.documents = b.documents[:0]
+	b.ids = b.ids[:0]
 }
 
 func (b *Batch) SetPersistedCallback(f func(error)) {

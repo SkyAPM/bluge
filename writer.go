@@ -67,6 +67,10 @@ func (w *Writer) Close() error {
 	return w.chill.Close()
 }
 
+func (w *Writer) ResetCache() {
+	w.chill.ResetCache()
+}
+
 func (w *Writer) Status() index.Stats {
 	return w.chill.Stats()
 }

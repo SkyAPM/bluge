@@ -20,14 +20,14 @@ import (
 
 const _idField = "_id"
 
-type Identifier string
+type Identifier []byte
 
 func (i Identifier) Field() string {
 	return _idField
 }
 
 func (i Identifier) Term() []byte {
-	return []byte(i)
+	return i
 }
 
 // NewBatch creates a new empty batch.

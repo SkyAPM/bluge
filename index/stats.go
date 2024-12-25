@@ -17,6 +17,8 @@ package index
 import (
 	"reflect"
 	"sync/atomic"
+
+	"github.com/VictoriaMetrics/fastcache"
 )
 
 func (s *Writer) DirectoryStats() (numFilesOnDisk, numBytesUsedDisk uint64) {
@@ -30,7 +32,19 @@ func (s *Writer) Stats() Stats {
 	// Update the stats atomically
 	atomic.StoreUint64(&s.stats.CurOnDiskBytes, numBytesUsedDisk)
 	atomic.StoreUint64(&s.stats.CurOnDiskFiles, numFilesOnDisk)
-	return s.stats.Clone()
+	stats := s.stats.Clone()
+	c := s.cache.Load()
+	if c != nil {
+		var cs fastcache.Stats
+		c.UpdateStats(&cs)
+		stats.CacheGetCalls = cs.GetCalls
+		stats.CacheSetCalls = cs.SetCalls
+		stats.CacheMisses = cs.Misses
+		stats.CacheEntriesCount = cs.EntriesCount
+		stats.CacheBytesSize = cs.BytesSize
+		stats.CacheMaxBytesSize = cs.MaxBytesSize
+	}
+	return stats
 }
 
 // Stats tracks statistics about the index, fields that are
@@ -152,6 +166,13 @@ type Stats struct {
 	newSegBufBytesRemoved uint64
 	analysisBytesAdded    uint64
 	analysisBytesRemoved  uint64
+
+	CacheGetCalls     uint64
+	CacheSetCalls     uint64
+	CacheMisses       uint64
+	CacheEntriesCount uint64
+	CacheBytesSize    uint64
+	CacheMaxBytesSize uint64
 }
 
 func (s *Stats) ToMap() map[string]interface{} {

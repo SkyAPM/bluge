@@ -24,6 +24,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/VictoriaMetrics/fastcache"
+	"github.com/bits-and-blooms/bitset"
 	segment "github.com/blugelabs/bluge_segment_api"
 
 	"github.com/RoaringBitmap/roaring"
@@ -53,6 +55,8 @@ type Writer struct {
 	asyncTasks sync.WaitGroup
 
 	closeOnce sync.Once
+
+	cache atomic.Pointer[fastcache.Cache]
 }
 
 func OpenWriter(config Config) (*Writer, error) {
@@ -61,6 +65,10 @@ func OpenWriter(config Config) (*Writer, error) {
 		deletionPolicy: config.DeletionPolicyFunc(),
 		directory:      config.DirectoryFunc(),
 		closeCh:        make(chan struct{}),
+	}
+
+	if config.CacheMaxBytes > 0 {
+		rv.cache.Store(fastcache.New(config.CacheMaxBytes))
 	}
 
 	// start the requested number of analysis workers
@@ -195,8 +203,17 @@ func (s *Writer) fireAsyncError(err error) {
 func (s *Writer) Close() (err error) {
 	s.closeOnce.Do(func() {
 		err = s.close()
+		s.ResetCache()
 	})
 	return err
+}
+
+func (s *Writer) ResetCache() {
+	c := s.cache.Load()
+	if c != nil {
+		c.Reset()
+		s.cache.Store(nil)
+	}
 }
 
 func (s *Writer) close() (err error) {
@@ -296,38 +313,76 @@ func (s *Writer) Batch(batch *Batch) (err error) {
 	return err
 }
 
+var id = "_id"
+
 func (s *Writer) removeExistingDocuments(batch *Batch) error {
+	if len(batch.unparsedIDs) == 0 {
+		return nil
+	}
+
 	root := s.currentSnapshot()
 	defer func() { _ = root.Close() }()
+	removeIDMap := bitset.New(uint(len(batch.unparsedIDs)))
 
+	var dict segment.Dictionary
+	var err error
 	for _, seg := range root.segment {
-		dict, err := seg.segment.Dictionary(batch.unparsedIDs[0].Field())
-		if err != nil {
-			return err
-		}
-
-		for i := 0; i < len(batch.unparsedIDs); i++ {
-			if ok, _ := dict.Contains(batch.unparsedIDs[i].Term()); !ok {
+		dict = nil
+		ff := seg.segment.Fields()
+		for i := uint(0); i < uint(len(batch.unparsedIDs)); i++ {
+			if removeIDMap.Test(i) {
 				continue
 			}
-			fn := batch.fieldNames[i]
-			if len(fn) > 0 {
-				if anyItemNotExist(fn, seg.segment.Fields()) {
+			idTerm := batch.unparsedIDs[i].Term()
+			c := s.cache.Load()
+			if c != nil {
+				if !c.Has(idTerm) {
+					if dict == nil {
+						dict, err = seg.segment.Dictionary(id)
+						if err != nil {
+							return err
+						}
+					}
+					if ok, _ := dict.Contains(idTerm); !ok {
+						continue
+					}
+					c.Set(idTerm, nil)
+				}
+			} else {
+				if dict == nil {
+					dict, err = seg.segment.Dictionary(id)
+					if err != nil {
+						return err
+					}
+				}
+				if ok, _ := dict.Contains(idTerm); !ok {
 					continue
 				}
 			}
-			batch.unparsedDocuments = append(batch.unparsedDocuments[:i], batch.unparsedDocuments[i+1:]...)
-			batch.unparsedIDs = append(batch.unparsedIDs[:i], batch.unparsedIDs[i+1:]...)
-			batch.fieldNames = append(batch.fieldNames[:i], batch.fieldNames[i+1:]...)
-			i--
-			if len(batch.unparsedDocuments) == 0 {
+
+			fn := batch.fieldNames[i]
+			if len(fn) > 0 {
+				if anyItemNotExist(fn, ff) {
+					continue
+				}
+			}
+			removeIDMap.Set(i)
+			if removeIDMap.All() {
 				return nil
 			}
 		}
 	}
-	if len(batch.unparsedDocuments) > 0 {
-		batch.documents = append(batch.documents, batch.unparsedDocuments...)
-		batch.ids = append(batch.ids, batch.unparsedIDs...)
+	if removeIDMap.Any() {
+		for i := uint(0); i < uint(len(batch.unparsedIDs)); i++ {
+			if removeIDMap.Test(i) {
+				continue
+			}
+			batch.documents = append(batch.documents, batch.unparsedDocuments[i])
+			batch.ids = append(batch.ids, batch.unparsedIDs[i])
+		}
+	} else {
+		batch.documents = batch.unparsedDocuments
+		batch.ids = batch.unparsedIDs
 	}
 	return nil
 }
