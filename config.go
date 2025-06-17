@@ -86,6 +86,11 @@ func (config Config) WithPrepareMergeCallback(f func(segments []segment.Segment,
 	return config
 }
 
+func (config Config) WithMinSegmentsForInMemoryMerge(c int) Config {
+	config.indexConfig.MinSegmentsForInMemoryMerge = c
+	return config
+}
+
 func DefaultConfig(path string) Config {
 	indexConfig := index.DefaultConfig(path)
 	return defaultConfig(indexConfig)
