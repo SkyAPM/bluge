@@ -363,6 +363,14 @@ func (s *Writer) mergeSegmentBases(merges chan *segmentMerge, snapshot *Snapshot
 
 func (s *Writer) merge(segments []segment.Segment, drops []*roaring.Bitmap, id uint64) (
 	[][]uint64, error) {
+	if s.config.PrepareMergeFunc != nil {
+		// call the prepare merge function
+		err := s.config.PrepareMergeFunc(segments, drops, id)
+		if err != nil {
+			return nil, fmt.Errorf("prepare merge failed: %w", err)
+		}
+	}
+
 	merger := s.segPlugin.Merge(segments, drops, s.config.MergeBufferSize)
 
 	err := s.directory.Persist(ItemKindSegment, id, merger, s.closeCh)

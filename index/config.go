@@ -21,6 +21,8 @@ import (
 
 	"github.com/blugelabs/bluge/index/mergeplan"
 	"github.com/blugelabs/ice"
+
+	"github.com/RoaringBitmap/roaring"
 )
 
 type Config struct {
@@ -80,6 +82,9 @@ type Config struct {
 	virtualFields map[string][]segment.Field
 
 	CacheMaxBytes int
+
+	// PerFieldSimilarity allows specifying a custom callback before merge operation
+	PrepareMergeFunc func(segments []segment.Segment, drops []*roaring.Bitmap, id uint64) error
 }
 
 func (config Config) WithSegmentType(typ string) Config {

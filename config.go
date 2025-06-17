@@ -18,6 +18,9 @@ import (
 	"io"
 	"log"
 
+	"github.com/RoaringBitmap/roaring"
+	segment "github.com/blugelabs/bluge_segment_api"
+
 	"github.com/blugelabs/bluge/analysis"
 	"github.com/blugelabs/bluge/analysis/analyzer"
 	"github.com/blugelabs/bluge/index"
@@ -75,6 +78,11 @@ func (config Config) DisableOptimizeDisjunctionUnadorned() Config {
 
 func (config Config) WithSearchStartFunc(f func(size uint64) error) Config {
 	config.SearchStartFunc = f
+	return config
+}
+
+func (config Config) WithPrepareMergeCallback(f func(segments []segment.Segment, drops []*roaring.Bitmap, id uint64) error) Config {
+	config.indexConfig.PrepareMergeFunc = f
 	return config
 }
 
