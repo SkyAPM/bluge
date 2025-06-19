@@ -206,6 +206,7 @@ func (s *Writer) executeMergeTask(merges chan *segmentMerge, task *mergeplan.Mer
 			// decrement the ref counts on skipping introduction.
 			// FIXME stale file that won't get cleaned up
 			_ = seg.Close()
+			_ = s.directory.Remove(ItemKindSegment, newSegmentID)
 		}
 	}
 
@@ -363,9 +364,18 @@ func (s *Writer) mergeSegmentBases(merges chan *segmentMerge, snapshot *Snapshot
 
 func (s *Writer) merge(segments []segment.Segment, drops []*roaring.Bitmap, id uint64) (
 	[][]uint64, error) {
+	var err error
+	if s.config.PrepareMergeFunc != nil {
+		// call the prepare merge function
+		drops, err = s.config.PrepareMergeFunc(drops, segments, id)
+		if err != nil {
+			return nil, fmt.Errorf("prepare merge failed: %w", err)
+		}
+	}
+
 	merger := s.segPlugin.Merge(segments, drops, s.config.MergeBufferSize)
 
-	err := s.directory.Persist(ItemKindSegment, id, merger, s.closeCh)
+	err = s.directory.Persist(ItemKindSegment, id, merger, s.closeCh)
 	if err != nil {
 		return nil, err
 	}
