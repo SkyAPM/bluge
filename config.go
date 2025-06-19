@@ -81,7 +81,8 @@ func (config Config) WithSearchStartFunc(f func(size uint64) error) Config {
 	return config
 }
 
-func (config Config) WithPrepareMergeCallback(f func(src []*roaring.Bitmap, segments []segment.Segment, id uint64) (dest []*roaring.Bitmap, err error)) Config {
+func (config Config) WithPrepareMergeCallback(f func(src []*roaring.Bitmap, segments []segment.Segment, id uint64) (
+	dest []*roaring.Bitmap, err error)) Config {
 	config.indexConfig.PrepareMergeFunc = f
 	return config
 }
