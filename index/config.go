@@ -84,7 +84,7 @@ type Config struct {
 	CacheMaxBytes int
 
 	// PerFieldSimilarity allows specifying a custom callback before merge operation
-	PrepareMergeFunc func(segments []segment.Segment, drops []*roaring.Bitmap, id uint64) error
+	PrepareMergeFunc func(src []*roaring.Bitmap, segments []segment.Segment, id uint64) (dest []*roaring.Bitmap, err error)
 }
 
 func (config Config) WithSegmentType(typ string) Config {
