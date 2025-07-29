@@ -85,6 +85,11 @@ type Config struct {
 
 	// PerFieldSimilarity allows specifying a custom callback before merge operation
 	PrepareMergeFunc func(src []*roaring.Bitmap, segments []segment.Segment, id uint64) (dest []*roaring.Bitmap, err error)
+
+	// External segment streaming options
+	EnableExternalSegments bool
+	EnableDeduplication    bool
+	ExternalSegmentTempDir string
 }
 
 func (config Config) WithSegmentType(typ string) Config {

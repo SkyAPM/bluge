@@ -79,6 +79,15 @@ func (w *Writer) DirectoryStats() (numFilesOnDisk, numBytesUsedDisk uint64) {
 	return w.chill.DirectoryStats()
 }
 
+// EnableExternalSegments creates and returns an ExternalSegmentReceiver for streaming external segments
+func (w *Writer) EnableExternalSegments() (*index.ExternalSegmentReceiver, error) {
+	if !w.config.EnableExternalSegments {
+		return nil, fmt.Errorf("external segments not enabled in config")
+	}
+
+	return index.NewExternalSegmentReceiver(w.chill, w.config.indexConfig)
+}
+
 func (w *Writer) Reader() (*Reader, error) {
 	r, err := w.chill.Reader()
 	if err != nil {
