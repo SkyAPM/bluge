@@ -296,7 +296,9 @@ func (esr *ExternalSegmentReceiver) persistSegmentFile() error {
 	// Clean up temp file
 	err = os.Remove(esr.tempFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to remove temp file: %w", err)
+		if esr.writer.config.AsyncError != nil {
+			esr.writer.config.AsyncError(fmt.Errorf("failed to remove temp file: %w", err))
+		}
 	}
 
 	return nil
