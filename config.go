@@ -39,6 +39,11 @@ type Config struct {
 
 	SearchStartFunc func(size uint64) error
 	SearchEndFunc   func(size uint64)
+
+	// External segment streaming options
+	EnableExternalSegments bool
+	EnableDeduplication    bool
+	ExternalSegmentTempDir string
 }
 
 // WithVirtualField allows you to describe a field that
@@ -87,6 +92,24 @@ func (config Config) WithPrepareMergeCallback(f func(src []*roaring.Bitmap, segm
 	return config
 }
 
+func (config Config) WithExternalSegments(tempDir string, enableDeduplication bool) Config {
+	config.EnableExternalSegments = true
+	config.EnableDeduplication = enableDeduplication
+	config.ExternalSegmentTempDir = tempDir
+
+	// Propagate to index config
+	config.indexConfig.EnableExternalSegments = true
+	config.indexConfig.EnableDeduplication = enableDeduplication
+	config.indexConfig.ExternalSegmentTempDir = tempDir
+
+	return config
+}
+
+// DefaultExternalSegmentConfig provides sensible defaults for external segment streaming
+func DefaultExternalSegmentConfig(tempDir string) Config {
+	return Config{}.WithExternalSegments(tempDir, true)
+}
+
 func DefaultConfig(path string) Config {
 	indexConfig := index.DefaultConfig(path)
 	return defaultConfig(indexConfig)
@@ -124,6 +147,12 @@ func defaultConfig(indexConfig index.Config) Config {
 		}
 		return rv.DefaultSimilarity.ComputeNorm(length)
 	})
+
+	// Propagate external segment settings from main config to index config
+	indexConfig.EnableExternalSegments = rv.EnableExternalSegments
+	indexConfig.EnableDeduplication = rv.EnableDeduplication
+	indexConfig.ExternalSegmentTempDir = rv.ExternalSegmentTempDir
+
 	rv.indexConfig = indexConfig
 
 	return rv

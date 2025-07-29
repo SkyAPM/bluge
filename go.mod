@@ -1,11 +1,10 @@
 module github.com/blugelabs/bluge
 
-go 1.23
-
-toolchain go1.23.1
+go 1.24
 
 require (
 	github.com/RoaringBitmap/roaring v1.9.4
+	github.com/VictoriaMetrics/fastcache v1.12.2
 	github.com/axiomhq/hyperloglog v0.2.0
 	github.com/bits-and-blooms/bitset v1.14.3
 	github.com/blevesearch/go-porterstemmer v1.0.3
@@ -22,7 +21,6 @@ require (
 )
 
 require (
-	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dgryski/go-metro v0.0.0-20211217172704-adc40b04c140 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
