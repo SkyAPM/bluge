@@ -241,18 +241,19 @@ func (esr *ExternalSegmentReceiver) introduceSegment() error {
 			esr.status = StreamFailed
 			return fmt.Errorf("deduplication failed: %w", err)
 		}
+		if segWrapper != originalSegWrapper {
+			// Close the original segment wrapper to release file handles
+			// before attempting to remove the file
+			_ = originalSegWrapper.Close()
 
-		// Close the original segment wrapper to release file handles
-		// before attempting to remove the file
-		_ = originalSegWrapper.Close()
-
-		// Try to remove the empty segment file, but don't fail if it's temporarily unavailable
-		err = esr.writer.directory.Remove(ItemKindSegment, esr.segmentID)
-		if err != nil {
-			// Log the error but don't fail the operation
-			// The file will be cleaned up later by the deletion policy
-			if esr.writer.config.AsyncError != nil {
-				esr.writer.config.AsyncError(fmt.Errorf("failed to remove empty segment (will retry later): %w", err))
+			// Try to remove the empty segment file, but don't fail if it's temporarily unavailable
+			err = esr.writer.directory.Remove(ItemKindSegment, esr.segmentID)
+			if err != nil {
+				// Log the error but don't fail the operation
+				// The file will be cleaned up later by the deletion policy
+				if esr.writer.config.AsyncError != nil {
+					esr.writer.config.AsyncError(fmt.Errorf("failed to remove empty segment (will retry later): %w", err))
+				}
 			}
 		}
 		if segWrapper == nil {
